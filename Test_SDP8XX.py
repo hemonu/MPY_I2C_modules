@@ -9,7 +9,7 @@ i2c0 = I2CBUS(hw.PORT, scl=hw.SCL, sda=hw.SDA, freq=100_000)
 print(i2c0)
 
 
-from SDP8XX import *
+from sdp8XX import *
 
 airspeed = SDP8XX(i2c=i2c0)
 

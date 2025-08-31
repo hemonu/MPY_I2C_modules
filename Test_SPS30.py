@@ -1,4 +1,4 @@
-from i2c_core import I2CDEV, I2CBUS
+﻿from i2c_core import I2CDEV, I2CBUS
 from time import sleep
 
 from board import HW_DEFS
@@ -8,7 +8,7 @@ i2c0 = I2CBUS(hw.PORT, scl=hw.SCL, sda=hw.SDA, freq=100_000)
 
 print(i2c0)
 
-from SPS30 import *
+from sps30 import *
 
 sps = SPS30(i2c=i2c0)
 

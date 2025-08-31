@@ -1,6 +1,7 @@
 from i2c_core import I2CDEV, I2CBUS
-from BME280 import *
+from bme280 import *
 from time import sleep
+from pca9548 import *
 
 from board import HW_DEFS
 hw = HW_DEFS()
@@ -9,6 +10,9 @@ i2c0 = I2CBUS(hw.PORT, scl=hw.SCL, sda=hw.SDA, freq=100_000)
 
 print(i2c0)
 
+i2cmux = PCA9548(i2c=i2c0)
+
+i2cmux.enable(1)
 bme280 = BME280(i2c=i2c0, altitude=54.0)
 
 
