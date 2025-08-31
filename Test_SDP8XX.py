@@ -1,34 +1,14 @@
 from i2c_core import I2CBUS, I2CDEV
 from time import sleep
-#from machine import I2C
 
-i2c0 = I2CBUS(port=0, scl=39, sda=38, freq=100_000)
-#i2c0 = I2C(0, scl=39, sda=38, freq=100_000)
+from board import HW_DEFS
+hw = HW_DEFS()
+
+i2c0 = I2CBUS(hw.PORT, scl=hw.SCL, sda=hw.SDA, freq=100_000)
+
 print(i2c0)
 
-'''
-answer = bytearray(18)
 
-i2c0.writeto(0x25, b'\x36\x7C')
-
-i2c0.writeto(0x25, b'\xE1\x02')
-
-i2c0.readfrom_into(0x25, memoryview(answer))
-
-print(answer.hex())
-
-id = answer[0:2].hex().upper() + answer[3:5].hex().upper()
-
-sn = ''
-
-for i in (6,9,12,15):
-    sn = sn + answer[i:i+2].hex().upper()
-
-print(" ID:", id)
-
-print("S/N:", sn)
-
-'''
 from SDP8XX import *
 
 airspeed = SDP8XX(i2c=i2c0)

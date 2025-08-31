@@ -44,6 +44,7 @@ import time
 from ustruct import unpack, unpack_from
 from array import array
 from math import exp, log
+from i2c_core import *
 
 # BME280 default address.
 BME280_I2CADDR = 0x76
@@ -55,9 +56,16 @@ BME280_OSAMPLE_4 = 3
 BME280_OSAMPLE_8 = 4
 BME280_OSAMPLE_16 = 5
 
+BME280_REGISTER_CALIB_0 = 0x88
+BME280_REGISTER_CALIB_26 = 0xE1
 BME280_REGISTER_CONTROL_HUM = 0xF2
 BME280_REGISTER_STATUS = 0xF3
 BME280_REGISTER_CONTROL = 0xF4
+BME280_REGISTER_CONFIG = 0xF5
+BME280_REGISTER_PRESS = 0xF7
+BME280_REGISTER_TEMP = 0xFA
+BME280_REGISTER_HUM = 0xFD
+
 
 MODE_SLEEP = const(0)
 MODE_FORCED = const(1)
@@ -65,7 +73,7 @@ MODE_NORMAL = const(3)
 
 BME280_TIMEOUT = const(100)  # about 1 second timeout
 
-class BME280:
+class BME280(I2CDEV):
     # creates variables
     measures = {\
         "temp" : [0.0, "°C", "Temperature", "Temperatur"],\
@@ -102,10 +110,14 @@ class BME280:
             raise ValueError('An I2C object is required.')
         self.i2c = i2c
         self.__altitude = altitude
-
+        super().__init__(bus=i2c, dev_id=address, probe_on_bus=True)
+        
+    def start_measurement(self):
         # load calibration data
-        dig_88_a1 = self.i2c.readfrom_mem(self.address, 0x88, 26)
-        dig_e1_e7 = self.i2c.readfrom_mem(self.address, 0xE1, 7)
+        dig_88_a1 = bytearray(26)
+        self.read_mem_into(BME280_REGISTER_CALIB_0, memoryview(dig_88_a1))
+        dig_e1_e7 = bytearray(7)
+        self.read_mem_into(BME280_REGISTER_CALIB_26, memoryview(dig_e1_e7))
 
         self.dig_T1, self.dig_T2, self.dig_T3, self.dig_P1, \
             self.dig_P2, self.dig_P3, self.dig_P4, self.dig_P5, \
@@ -124,9 +136,10 @@ class BME280:
         self._l3_resultarray = array("i", [0, 0, 0])
 
         self._l1_barray[0] = self._mode_temp << 5 | self._mode_press << 2 | MODE_SLEEP
-        self.i2c.writeto_mem(self.address, BME280_REGISTER_CONTROL,
+        self.write_mem(BME280_REGISTER_CONTROL,
                              self._l1_barray)
         self.t_fine = 0
+        return
 
     def read_raw_data(self, result):
         """ Reads the raw (uncompensated) data from the sensor.
@@ -139,20 +152,18 @@ class BME280:
         """
 
         self._l1_barray[0] = self._mode_hum
-        self.i2c.writeto_mem(self.address, BME280_REGISTER_CONTROL_HUM,
-                             self._l1_barray)
+        self.write_mem(BME280_REGISTER_CONTROL_HUM, self._l1_barray)
         self._l1_barray[0] = self._mode_temp << 5 | self._mode_press << 2 | MODE_FORCED
-        self.i2c.writeto_mem(self.address, BME280_REGISTER_CONTROL,
-                             self._l1_barray)
+        self.write_mem(BME280_REGISTER_CONTROL, self._l1_barray)
 
         # wait up to about 5 ms for the conversion to start
         for _ in range(5):
-            if self.i2c.readfrom_mem(self.address, BME280_REGISTER_STATUS, 1)[0] & 0x08:
+            if self.read_mem(BME280_REGISTER_STATUS, 1)[0] & 0x08:
                 break;  # The conversion is started.
             time.sleep_ms(1)  # still not busy
         # Wait for conversion to complete
         for _ in range(BME280_TIMEOUT):
-            if self.i2c.readfrom_mem(self.address, BME280_REGISTER_STATUS, 1)[0] & 0x08:
+            if self.read_mem(BME280_REGISTER_STATUS, 1)[0] & 0x08:
                 time.sleep_ms(10)  # still busy
             else:
                 break  # Sensor ready
@@ -160,8 +171,7 @@ class BME280:
             raise RuntimeError("Sensor BME280 not ready")
 
         # burst readout from 0xF7 to 0xFE, recommended by datasheet
-        self.i2c.readfrom_mem_into(self.address, 0xF7, self._l8_barray)
-        readout = self._l8_barray
+        readout = self.read_mem(BME280_REGISTER_PRESS, 8)
         # pressure(0xF7): ((msb << 16) | (lsb << 8) | xlsb) >> 4
         raw_press = ((readout[0] << 16) | (readout[1] << 8) | readout[2]) >> 4
         # temperature(0xFA): ((msb << 16) | (lsb << 8) | xlsb) >> 4

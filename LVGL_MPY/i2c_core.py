@@ -34,15 +34,25 @@ class I2CDEV():
     def read_into(self, rx_data):
         self._bus.readfrom_into(self._addr, rx_data)
         
+    def read(self, rx_len):
+        rx_data = bytearray(rx_len)
+        self._bus.readfrom_into(self._addr, memoryview(rx_data))
+        return rx_data        
+        
     def write_read_into(self, tx_data, rx_data):
         self._bus.writeto(self._addr, tx_data)
         self._bus.readfrom_into(self._addr, rx_data)
     
     def write_mem(self, regaddr, tx_data):
-        self._bus.writeto_mem(self._addr, regaddr, tx_data, addrsize=self.regbits)
+        self._bus.writeto_mem(self._addr, regaddr, tx_data, addrsize=self._reg_bits)
     
     def read_mem_into(self, regaddr, rx_data):
-            self._bus.readfrom_mem_into(self._addr, regaddr,  rx_data, addrsize=self.regbits)
+        self._bus.readfrom_mem_into(self._addr, regaddr,  rx_data, addrsize=self._reg_bits)
+        
+    def read_mem(self, regaddr, rx_len):
+        rx_data = bytearray(rx_len)        
+        self._bus.readfrom_mem_into(self._addr, regaddr, rx_data, addrsize=self._reg_bits)
+        return rx_data
         
     @property
     def detected(self):

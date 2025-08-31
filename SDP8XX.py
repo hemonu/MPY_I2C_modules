@@ -2,6 +2,7 @@ import time
 from ustruct import unpack, unpack_from
 from array import array
 from math import exp, log
+from i2c_core import *
 
 # BME280 default address.
 SDP810_I2CADDR = 0x25
@@ -71,7 +72,7 @@ def chk_crc(data):
     return crc_correct
         
 
-class SDP8XX:
+class SDP8XX(I2CDEV):
     # creates variables
     MODE_MASS = True;
     MODE_DP = False;
@@ -88,6 +89,8 @@ class SDP8XX:
         if i2c is None:
             raise ValueError('An I2C object is required.')
         self.i2c = i2c
+        super().__init__(bus=i2c, dev_id=address, probe_on_bus=True)
+        
 
     def soft_reset(self):
         self.i2c.writeto(0, bytes.fromhex('06'))
@@ -96,9 +99,9 @@ class SDP8XX:
     
     def get_device_type(self):
         answer = bytearray(6)
-        self.i2c.writeto(self.address, READ_ID_0)
-        self.i2c.writeto(self.address, READ_ID_1)
-        self.i2c.readfrom_into(self.address, memoryview(answer))
+        self.write(READ_ID_0)
+        self.write(READ_ID_1)
+        self.read_into(memoryview(answer))
         if chk_crc(answer):
             id = answer[0:2].hex().upper() + answer[3:5].hex().upper()
         else:
@@ -107,9 +110,9 @@ class SDP8XX:
         
     def get_device_serial(self):
         answer = bytearray(18)
-        self.i2c.writeto(self.address, READ_ID_0)
-        self.i2c.writeto(self.address, READ_ID_1)
-        self.i2c.readfrom_into(self.address, memoryview(answer))
+        self.write(READ_ID_0)
+        self.write(READ_ID_1)
+        self.read_into(memoryview(answer))
         if chk_crc(answer):
             sn = ""
             for i in (6,9,12,15):
@@ -121,18 +124,18 @@ class SDP8XX:
     def start_cont_meas(self, mode:bool, averaging:bool):
         if mode == self.MODE_MASS:
             if averaging:
-                self.i2c.writeto(self.address, START_CONT_MEAS_MASS_AVG)
+                self.write(START_CONT_MEAS_MASS_AVG)
             else:
-                self.i2c.writeto(self.address, START_CONT_MEAS_MASS_SNGL)
+                self.write(START_CONT_MEAS_MASS_SNGL)
         else:
             if averaging:
-                self.i2c.writeto(self.address, START_CONT_MEAS_DP_AVG)
+                self.write(START_CONT_MEAS_DP_AVG)
             else:
-                self.i2c.writeto(self.address, START_CONT_MEAS_DP_SNGL)
+                self.write(START_CONT_MEAS_DP_SNGL)
         return
     
     def stop_cont_meas(self):
-        self.i2c.writeto(self.address, STOP_CONT_MEAS)
+        self.write(STOP_CONT_MEAS)
         return
     
     def ReadAllMeasures(self):
@@ -144,7 +147,7 @@ class SDP8XX:
         '''
         self.measuresValid = False
         answer = bytearray(9)
-        self.i2c.readfrom_into(self.address, memoryview(answer))
+        self.read_into(memoryview(answer))
         #print(answer.hex().upper())
         if chk_crc(answer):
             p,t,s = unpack(">hxhxhx", answer)

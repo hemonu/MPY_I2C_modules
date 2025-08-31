@@ -1,14 +1,19 @@
-from i2c_core import I2CBUS, I2CDEV
-#from machine import I2C
-
-i2c0 = I2CBUS(port=0, scl=39, sda=38, freq=100_000)
-#i2c0 = I2C(0, scl=39, sda=38, freq=100_000)
-#print(i2c0)
-
+from i2c_core import I2CDEV, I2CBUS
 from BME280 import *
-from utime import sleep
+from time import sleep
+
+from board import HW_DEFS
+hw = HW_DEFS()
+
+i2c0 = I2CBUS(hw.PORT, scl=hw.SCL, sda=hw.SDA, freq=100_000)
+
+print(i2c0)
 
 bme280 = BME280(i2c=i2c0, altitude=54.0)
+
+
+
+bme280.start_measurement()
 
 #bme280 = I2CDEV(bus=i2c0, dev_id=0x76, probe_on_bus=True, reg_bits=8)
 #print(bme280)
